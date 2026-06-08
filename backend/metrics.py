@@ -5,6 +5,9 @@ fixed and the (moving / registered) image, then measure overlap. In the research
 *segmentation label* defines the mask; here, with arbitrary uploaded slices, we
 derive the mask by Otsu thresholding the brain foreground. The number is therefore
 a real overlap score on the same scale (0-1), shown as before -> after.
+
+Figures are rendered on a dark "viewer" background to match the imaging-workstation
+look of the frontend.
 """
 
 from __future__ import annotations
@@ -18,6 +21,11 @@ matplotlib.use("Agg")  # headless rendering
 import matplotlib.pyplot as plt
 import numpy as np
 from skimage.filters import threshold_otsu
+
+# Dark imaging-viewer palette (matches the frontend frames).
+_BG = "#0c0c0f"
+_FG = "#cfccc2"
+_GRID = "#5cc6e6"
 
 
 def _mask(img: np.ndarray) -> np.ndarray:
@@ -61,9 +69,23 @@ def fraction_folding(jac: np.ndarray) -> float:
 
 # --- PNG renderers (return base64 data URIs the frontend can <img src> directly) ---
 
+def _new_fig():
+    fig, ax = plt.subplots(figsize=(3.4, 3.4))
+    fig.patch.set_facecolor(_BG)
+    ax.set_facecolor(_BG)
+    return fig, ax
+
+
 def _fig_to_data_uri(fig) -> str:
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0, dpi=110)
+    fig.savefig(
+        buf,
+        format="png",
+        bbox_inches="tight",
+        pad_inches=0.04,
+        dpi=130,
+        facecolor=fig.get_facecolor(),
+    )
     plt.close(fig)
     buf.seek(0)
     b64 = base64.b64encode(buf.read()).decode("ascii")
@@ -71,40 +93,39 @@ def _fig_to_data_uri(fig) -> str:
 
 
 def render_gray(img: np.ndarray, title: str | None = None) -> str:
-    fig, ax = plt.subplots(figsize=(3.2, 3.2))
+    fig, ax = _new_fig()
     ax.imshow(img, cmap="gray", vmin=0, vmax=1)
     ax.axis("off")
     if title:
-        ax.set_title(title, fontsize=9)
+        ax.set_title(title, fontsize=9, color=_FG)
     return _fig_to_data_uri(fig)
 
 
 def render_difference(a: np.ndarray, b: np.ndarray, title: str | None = None) -> str:
-    """Signed difference heatmap (red/blue), e.g. fixed - moving vs fixed - registered."""
+    """Signed difference heatmap, e.g. fixed - moving vs fixed - registered."""
     diff = np.asarray(a, dtype=np.float32) - np.asarray(b, dtype=np.float32)
     lim = max(float(np.abs(diff).max()), 1e-6)
-    fig, ax = plt.subplots(figsize=(3.2, 3.2))
+    fig, ax = _new_fig()
     ax.imshow(diff, cmap="RdBu_r", vmin=-lim, vmax=lim)
     ax.axis("off")
     if title:
-        ax.set_title(title, fontsize=9)
+        ax.set_title(title, fontsize=9, color=_FG)
     return _fig_to_data_uri(fig)
 
 
 def render_deformation_grid(v: np.ndarray, u: np.ndarray, step: int = 8) -> str:
     """Warped regular grid — the classic 'how space was deformed' visualization."""
     rows, cols = v.shape
-    fig, ax = plt.subplots(figsize=(3.2, 3.2))
+    fig, ax = _new_fig()
 
-    # vertical then horizontal grid lines, displaced by the field
     for c in range(0, cols, step):
         rr = np.arange(rows)
         cc = c + u[rr, np.full_like(rr, c)]
-        ax.plot(cc, rr, color="#2563eb", linewidth=0.5)
+        ax.plot(cc, rr, color=_GRID, linewidth=0.5, alpha=0.9)
     for r in range(0, rows, step):
         cc = np.arange(cols)
         rr = r + v[np.full_like(cc, r), cc]
-        ax.plot(cc, rr, color="#2563eb", linewidth=0.5)
+        ax.plot(cc, rr, color=_GRID, linewidth=0.5, alpha=0.9)
 
     ax.set_xlim(0, cols)
     ax.set_ylim(rows, 0)
@@ -114,8 +135,12 @@ def render_deformation_grid(v: np.ndarray, u: np.ndarray, step: int = 8) -> str:
 
 def render_jacobian(jac: np.ndarray) -> str:
     """Jacobian-determinant heatmap (shrink vs expand)."""
-    fig, ax = plt.subplots(figsize=(3.2, 3.2))
+    fig, ax = _new_fig()
     im = ax.imshow(jac, cmap="coolwarm", vmin=0, vmax=2)
     ax.axis("off")
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.ax.yaxis.set_tick_params(color=_FG, labelcolor=_FG)
+    cbar.outline.set_edgecolor(_FG)
+    for t in cbar.ax.get_yticklabels():
+        t.set_fontsize(7)
     return _fig_to_data_uri(fig)

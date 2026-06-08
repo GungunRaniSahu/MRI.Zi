@@ -41,53 +41,55 @@ export default function Playground() {
 
   return (
     <div>
-      <div className="card">
-        <div className="controls">
-          <div className="upload">
-            <label>Fixed image (target)</label>
+      <div className="panel">
+        <div className="toolbar">
+          <div className="field">
+            <label>Fixed / target</label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setFixed(e.target.files?.[0] ?? null)}
             />
           </div>
-          <div className="upload">
-            <label>Moving image (to align)</label>
+          <div className="field">
+            <label>Moving / source</label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setMoving(e.target.files?.[0] ?? null)}
             />
           </div>
-          <button className="btn" disabled={!canUpload} onClick={() => run(false)}>
-            {loading ? "Registering…" : "Register"}
-          </button>
-          <button
-            className="btn secondary"
-            disabled={loading}
-            onClick={() => run(true)}
-          >
-            Try an example
-          </button>
+          <div className="toolbar-actions">
+            <button className="btn ghost" disabled={loading} onClick={() => run(true)}>
+              Load example
+            </button>
+            <button className="btn" disabled={!canUpload} onClick={() => run(false)}>
+              {loading ? "Registering…" : "Register"}
+            </button>
+          </div>
         </div>
 
-        <div className={`status-line ${error ? "err" : ""}`}>
+        <div className={`statusbar ${error ? "err" : ""}`}>
           {online === null && "Checking backend…"}
           {online === false && (
             <>
-              <span className="dot down" />
-              Backend offline — start it with{" "}
-              <code>uvicorn main:app --port 8000</code> in <code>/backend</code>.
+              <span className="led down" />
+              Backend offline — run <code>uvicorn main:app --port 8000</code> in
+              /backend
             </>
           )}
           {online && !error && (
             <>
-              <span className="dot ok" />
-              Backend online · engine: classical TV-L1 optical flow · inputs resized
-              to 192×192
+              <span className="led ok" />
+              Backend online · engine TV-L1 optical flow · inputs 192×192 grayscale
             </>
           )}
-          {error && <>⚠ {error}</>}
+          {error && (
+            <>
+              <span className="led down" />
+              {error}
+            </>
+          )}
         </div>
       </div>
 
@@ -98,88 +100,97 @@ export default function Playground() {
 
 function Results({ result }: { result: RegistrationResponse }) {
   const m = result.metrics;
+  const improved = m.improvement >= 0;
   return (
-    <div style={{ marginTop: 24 }}>
-      <div className="metrics">
-        <div className="metric">
-          <div className="k">Dice before</div>
-          <div className="v">{m.dice_before.toFixed(3)}</div>
-          <div className="sub">moving ↔ fixed overlap</div>
-        </div>
-        <div className="metric">
-          <div className="k">Dice after</div>
-          <div className="v good">{m.dice_after.toFixed(3)}</div>
-          <div className="sub">registered ↔ fixed overlap</div>
-        </div>
-        <div className="metric">
-          <div className="k">Improvement</div>
-          <div className="v good">
-            {m.improvement >= 0 ? "+" : ""}
-            {m.improvement.toFixed(3)}
+    <div>
+      <div className="readout">
+        <div className="readout-main">
+          <div className="kicker">Dice overlap · before → after</div>
+          <div className="dice-flow">
+            <span className="num">{m.dice_before.toFixed(3)}</span>
+            <span className="arrow">→</span>
+            <span className="num good">{m.dice_after.toFixed(3)}</span>
           </div>
-          <div className="sub">
-            {m.improvement_pct >= 0 ? "+" : ""}
-            {m.improvement_pct.toFixed(1)}% relative
+          <div className={`delta ${improved ? "" : "neg"}`}>
+            {improved ? "▲" : "▼"} {improved ? "+" : ""}
+            {m.improvement.toFixed(3)} ({improved ? "+" : ""}
+            {m.improvement_pct.toFixed(1)}%) overlap with target
           </div>
         </div>
-        <div className="metric">
-          <div className="k">Mean displacement</div>
-          <div className="v">{m.mean_displacement.toFixed(2)}</div>
-          <div className="sub">pixels</div>
-        </div>
-        <div className="metric">
-          <div className="k">Folding</div>
-          <div className="v">{(m.folding_fraction * 100).toFixed(2)}%</div>
-          <div className="sub">non-diffeomorphic px</div>
+        <div className="readout-stats">
+          <div className="stat">
+            <div className="k">Mean disp.</div>
+            <div className="v">{m.mean_displacement.toFixed(2)}</div>
+            <div className="u">pixels</div>
+          </div>
+          <div className="stat">
+            <div className="k">Folding</div>
+            <div className="v">{(m.folding_fraction * 100).toFixed(2)}%</div>
+            <div className="u">non-diffeo.</div>
+          </div>
+          <div className="stat">
+            <div className="k">Engine</div>
+            <div className="v" style={{ fontSize: 14 }}>
+              TV-L1
+            </div>
+            <div className="u">optical flow</div>
+          </div>
         </div>
       </div>
 
-      <h3 style={{ margin: "8px 0 12px", fontSize: 16 }}>Images</h3>
-      <div className="grid cols-3">
-        <Tile src={result.images.fixed} cap="Fixed (target)" />
-        <Tile src={result.images.moving} cap="Moving (input)" />
-        <Tile src={result.images.registered} cap="Registered (output)" />
+      <div className="block-title">Fixed · Moving · Registered</div>
+      <div className="viewer-grid three">
+        <Frame src={result.images.fixed} tag="A" cap="Fixed (target)" />
+        <Frame src={result.images.moving} tag="B" cap="Moving (input)" />
+        <Frame src={result.images.registered} tag="B→A" cap="Registered (output)" />
       </div>
 
-      <h3 style={{ margin: "22px 0 12px", fontSize: 16 }}>
-        How registration changed things
-      </h3>
-      <div className="grid cols-2">
-        <Tile
+      <div className="block-title">What registration changed</div>
+      <div className="viewer-grid two">
+        <Frame
           src={result.images.diff_before}
-          cap="Difference BEFORE (fixed − moving)"
+          tag="Δ"
+          cap="Difference before (fixed − moving)"
         />
-        <Tile
+        <Frame
           src={result.images.diff_after}
-          cap="Difference AFTER (fixed − registered)"
+          tag="Δ"
+          cap="Difference after (fixed − registered)"
         />
-        <Tile
+        <Frame
           src={result.images.deformation_grid}
+          tag="φ"
           cap="Deformation field (warped grid)"
         />
-        <Tile
+        <Frame
           src={result.images.jacobian}
-          cap="Jacobian determinant (shrink ↔ expand)"
+          tag="|J|"
+          cap="Jacobian — shrink vs expand"
         />
       </div>
 
-      <div className="note">
-        A smaller / flatter <b>difference-after</b> map and a higher{" "}
-        <b>Dice-after</b> mean the moving image was successfully warped onto the
-        fixed one. The deformation grid shows <i>where</i> space was stretched; the
-        Jacobian shows local shrinkage (blue) vs expansion (red) — the same signal
-        Phase&nbsp;4 of the research uses to detect hippocampal atrophy.
-      </div>
+      <p className="note">
+        A flatter <b>difference-after</b> map and a higher <b>Dice-after</b> mean the
+        moving image was warped onto the fixed one. The deformation grid shows{" "}
+        <i>where</i> space was stretched; the Jacobian shows local shrinkage vs
+        expansion — the same signal Phase&nbsp;4 of the research uses to detect
+        hippocampal atrophy.
+      </p>
     </div>
   );
 }
 
-function Tile({ src, cap }: { src: string; cap: string }) {
+function Frame({ src, tag, cap }: { src: string; tag: string; cap: string }) {
   return (
-    <div className="tile">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={cap} />
-      <div className="cap">{cap}</div>
-    </div>
+    <figure className="frame">
+      <div className="scope">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={cap} />
+      </div>
+      <figcaption>
+        <span className="tag">{tag}</span>
+        <span>{cap}</span>
+      </figcaption>
+    </figure>
   );
 }
