@@ -1,81 +1,115 @@
+<div align="center">
+
 # MRI.Zi — Deformable Brain-MRI Registration
 
-An interactive **deformable medical image registration** web app, paired with a
-showcase of deep-learning research (VoxelMorph, TransMorph, MLKA-Net) benchmarked on
-the **OASIS** brain-MRI dataset at NIT Trichy.
+**Bend one brain onto another, and watch the Dice score climb.**
 
-Upload two brain slices (a **fixed** target and a **moving** image), and the app
-estimates a dense per-pixel deformation field, warps the moving image onto the fixed
-one, and reports the **Dice** overlap score **before vs after** — the same evaluation
-metric used in the research.
+An interactive web app for non-rigid medical image registration, paired with the
+deep-learning research it grew out of — VoxelMorph, TransMorph and MLKA-Net
+benchmarked on the **OASIS** brain-MRI dataset at NIT Trichy.
 
-![stack](https://img.shields.io/badge/FastAPI-009688) ![stack](https://img.shields.io/badge/Next.js-000000) ![stack](https://img.shields.io/badge/scikit--image-orange)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![scikit-image](https://img.shields.io/badge/scikit--image-FF7F0E?logo=scikitimage&logoColor=white)](https://scikit-image.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-1d4e5f.svg)](#license)
+
+</div>
+
+<!-- Drop a screenshot here once deployed:  ![MRI.Zi screenshot](docs/screenshot.png) -->
 
 ---
 
-## Why two parts?
+## What it does
 
-| Part | What it is | Runs |
+Upload two brain-MRI slices — a **fixed** (target) and a **moving** (source) — and the
+app estimates a dense, per-pixel **deformation field** that warps the moving image onto
+the fixed one. It then reports the **Dice overlap** *before vs after* registration, and
+visualizes exactly what changed: the warped result, a difference map, the deformation
+grid, and the Jacobian determinant (where tissue locally shrank or expanded).
+
+> **Registration ≠ a shift or rotation.** It is a smooth, non-rigid *warp* — the core
+> problem in medical imaging when comparing brains across subjects or time.
+
+### Two parts, one story
+
+| | What it is | Where it runs |
 | --- | --- | --- |
-| **Live playground** | A real **classical** deformable registration (TV-L1 optical flow) | On CPU, no GPU/weights — works anywhere |
-| **Research showcase** | The actual **VoxelMorph / TransMorph** results on 3D OASIS | Produced on Colab GPU; figures included |
+| **① Live playground** | A real **classical** deformable registration (TV-L1 optical flow) | CPU only — works anywhere, no GPU or trained weights |
+| **② Research showcase** | The actual **VoxelMorph / TransMorph** results on 3D OASIS brains | Produced on Colab GPU; figures included in the app |
 
-The classical engine makes the demo runnable by anyone, while the research section
-grounds it in real deep-learning work. The backend is written behind a small
-`RegistrationEngine` interface, so a learned VoxelMorph/TransMorph model can be
-dropped in **behind the same API** without changing the frontend.
+The classical engine makes the demo runnable by anyone; the research section grounds it
+in real deep-learning work. Crucially, the backend is built behind a small
+`RegistrationEngine` interface, so a learned VoxelMorph/TransMorph model can be dropped
+in **behind the same API** without touching the frontend.
 
 ---
 
-## Architecture
+## Features
+
+- 🧠 **Real deformable registration** — dense TV-L1 optical-flow displacement field, not a rigid transform
+- 📊 **Quantitative readout** — Dice before → after, mean displacement, % folding (diffeomorphism check)
+- 🔬 **Rich visualizations** — fixed/moving/registered, signed difference maps, warped deformation grid, Jacobian heatmap
+- ⚡ **Zero-setup demo** — built-in synthetic brain pair with a known deformation (the "Load example" button)
+- 🔌 **Pluggable engine** — swap the classical baseline for a learned model behind one interface
+- 🎨 **Editorial UI** — a radiology-workstation aesthetic, not a template
+
+---
+
+## How it works
 
 ```
-moving + fixed ──▶ RegistrationEngine ──▶ deformation field (u, v)
-                                              │
-                                              ├─▶ warp moving ──▶ registered image
-                                              ├─▶ Dice (before vs after)
-                                              ├─▶ deformation grid + Jacobian
-                                              └─▶ difference maps
+            ┌──────────────────────────── RegistrationEngine ───────────────────────────┐
+ fixed ───▶ │                                                                            │
+ moving ──▶ │   estimate dense displacement field (u, v)  ─────────────────────────────▶ │ ──▶ deformation field
+            │                                                                            │
+            └────────────────────────────────────┬───────────────────────────────────── ┘
+                                                  │
+                  ┌───────────────────────────────┼───────────────────────────────┐
+                  ▼                ▼               ▼                ▼               ▼
+            warp moving      Dice before/     deformation       Jacobian       difference
+            → registered     after overlap    grid (warp)       |J| heatmap     maps
 ```
 
-```
-MRI.Zi/
-├── backend/                 FastAPI + scikit-image
-│   ├── main.py              HTTP layer: /health, /sample, /register
-│   ├── registration.py      pluggable engine interface + classical TV-L1 engine
-│   ├── metrics.py           Dice, Jacobian, PNG renderers
-│   ├── sample_data.py       synthetic brain-pair generator ("Try an example")
-│   └── requirements.txt
-└── frontend/                Next.js (App Router, TypeScript)
-    ├── app/                 page, layout, global styles
-    ├── components/          Playground (live) + ResultsShowcase (research)
-    ├── lib/api.ts           typed backend client
-    └── public/research/     real research figures
-```
+The **Dice** score is computed the same way the research does it — overlap of binary
+masks. In the research, masks come from anatomical **segmentation labels**; in the live
+demo (arbitrary uploads) the brain mask is derived by Otsu thresholding, so the number is
+a real overlap score on the same 0–1 scale.
+
+---
+
+## Tech stack
+
+| Layer | Tools |
+| --- | --- |
+| **Backend** | FastAPI · scikit-image (TV-L1 optical flow) · NumPy · Pillow · Matplotlib |
+| **Frontend** | Next.js (App Router) · React · TypeScript |
+| **Research** | VoxelMorph (TensorFlow) · TransMorph (PyTorch) · MLKA-Net · OASIS dataset |
 
 ---
 
 ## Run it locally
 
-You need **Python 3.11+** and **Node 18+**. Two terminals.
+**Requirements:** Python 3.11+ and Node 18+. Use two terminals.
 
-### 1. Backend (FastAPI)
+### 1 · Backend (FastAPI)
 
 ```bash
 cd backend
 python -m venv .venv
-# Windows PowerShell:
+
+# Windows (PowerShell)
 .\.venv\Scripts\Activate.ps1
-# macOS/Linux:
+# macOS / Linux
 # source .venv/bin/activate
 
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-Backend is now at `http://localhost:8000` (try `http://localhost:8000/health`).
+Check it's up: open <http://localhost:8000/health> → `{"status":"ok", ...}`.
 
-### 2. Frontend (Next.js)
+### 2 · Frontend (Next.js)
 
 ```bash
 cd frontend
@@ -83,30 +117,57 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3000**. Click **“Try an example”** to run immediately, or
-upload two brain-MRI slices.
+Open <http://localhost:3000> and click **“Load example”** to run instantly, or upload two
+brain slices.
 
 > The frontend reads the backend URL from `NEXT_PUBLIC_API_URL` (defaults to
 > `http://localhost:8000`). Set it in `frontend/.env.local` to point elsewhere.
 
 ---
 
+## Project structure
+
+```
+MRI.Zi/
+├── backend/                  FastAPI service
+│   ├── main.py               HTTP layer: /health · /sample · /register
+│   ├── registration.py       RegistrationEngine interface + classical TV-L1 engine
+│   ├── metrics.py            Dice, Jacobian, and dark-themed figure renderers
+│   ├── sample_data.py        synthetic brain-pair generator ("Load example")
+│   └── requirements.txt
+└── frontend/                 Next.js app
+    ├── app/                  page · layout · global styles
+    ├── components/           Playground (live)  ·  ResultsShowcase (research)
+    ├── lib/api.ts            typed backend client
+    └── public/research/      real research figures
+```
+
+### API
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness + active engine |
+| `GET` | `/sample` | A ready-made fixed/moving example pair (base64 PNGs) |
+| `POST` | `/register` | Register an uploaded (or sample) pair → metrics + images |
+
+---
+
 ## The research behind it (NIT Trichy)
 
-Reproducible 3D brain-MRI registration comparing three model families on the same
-**Neurite-OASIS** data (414 brains, 35 anatomical labels) under one metric — **Dice**
-on warped segmentation labels.
+A reproducible pipeline comparing three model families on the **same Neurite-OASIS** data
+(414 brains, 35 anatomical labels) under one metric — **Dice** on warped segmentation
+labels.
 
 | Model | Architecture | Backend | Input | Role |
 | --- | --- | --- | --- | --- |
 | **VoxelMorph** | CNN (U-Net) | TensorFlow | 160×160×192 | SynthMorph pretrained baseline |
 | **TransMorph** | Swin-Transformer + ConvNet | PyTorch | 160×192×224 | Learn2Reg OASIS winner |
-| **MLKA-Net** | Multi-scale large-kernel attention | PyTorch | native | Attention target model |
+| **MLKA-Net** | Large-kernel attention | PyTorch | native | Attention target model |
 
-**Application (Phase 4):** rather than stopping at Dice, the study uses each model's
-deformation field — measuring the **Jacobian determinant inside the hippocampus** — to
-**detect dementia** (healthy vs demented from OASIS CDR labels), comparing models by
-ROC-AUC. This is deformation-based morphometry.
+**Application (Phase 4).** Rather than stopping at "which model has the best Dice," the
+study *uses* each model's deformation field — measuring the **Jacobian determinant inside
+the hippocampus** — to **detect dementia** (healthy vs demented from OASIS CDR labels),
+comparing models by ROC-AUC. This is deformation-based morphometry.
 
 ---
 
@@ -117,21 +178,41 @@ Implement the interface in `backend/registration.py`:
 ```python
 class VoxelMorphEngine(RegistrationEngine):
     name = "voxelmorph"
+
     def register(self, fixed, moving) -> RegistrationResult:
-        # run the network, get displacement (v, u), warp moving, return result
+        # run the network → displacement (v, u) → warp moving → return result
         ...
 ```
 
 Register it in `get_engine(...)` and set `ENGINE_NAME` in `main.py`. The metrics,
-visualizations, API and frontend are unchanged.
+visualizations, API, and frontend stay unchanged.
 
 ---
 
-## Notes & honest caveats
+## Roadmap
 
-- The live engine is a **classical** baseline, not a neural network — chosen so the
-  demo runs on any CPU. The deep-learning results live in the research section.
-- In the live demo, the Dice mask is derived by **Otsu thresholding** the uploaded
-  slice (no segmentation labels uploaded). In the research, Dice uses real anatomical
-  **segmentation labels** — the more rigorous version of the same metric.
+- [ ] Deploy (frontend → Vercel, backend → Render) for a live link
+- [ ] Wire in pretrained VoxelMorph weights for an authentic DL demo
+- [ ] NIfTI (`.nii`) upload + scrollable 3D slice viewer
+- [ ] Side-by-side engine comparison (classical vs learned)
+
+---
+
+## Honest caveats
+
+- The live engine is a **classical** baseline (not a neural net) — chosen so the demo runs
+  on any CPU. The deep-learning results live in the research section.
+- Live-demo Dice uses an **Otsu-thresholded** mask (no labels uploaded); the research uses
+  real anatomical **segmentation labels** — the more rigorous version of the same metric.
 - Inputs are resized to **192×192** grayscale for a fast, consistent demo.
+
+---
+
+## Author
+
+**Gungun Rani** — Research Intern, NIT Trichy · AI & Full-Stack Developer
+[GitHub](https://github.com/GungunRaniSahu) · [LinkedIn](https://www.linkedin.com/in/gungun-rani-300667258/)
+
+## License
+
+Released under the MIT License.
