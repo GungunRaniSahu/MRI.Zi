@@ -1,0 +1,8 @@
+# Relaxed lower-bound pins so pip can resolve wheels for newer Python (3.14).
+fastapi>=0.115
+uvicorn[standard]>=0.34
+python-multipart>=0.0.20
+numpy>=2.1
+scikit-image>=0.25
+Pillow>=11
+matplotlib>=3.9
