@@ -16,7 +16,24 @@ benchmarked on the **OASIS** brain-MRI dataset at NIT Trichy.
 
 </div>
 
-<!-- Drop a screenshot here once deployed:  ![MRI.Zi screenshot](docs/screenshot.png) -->
+<div align="center">
+
+![MRI.Zi — deformable brain-MRI registration](docs/hero.png)
+
+</div>
+
+<details>
+<summary><b>🔎 See a full registration in action</b> — fixed → moving → registered, difference maps, deformation grid &amp; Jacobian (click to expand)</summary>
+
+<br/>
+
+<div align="center">
+
+![Full walkthrough: registration readout and figures](docs/screenshot.png)
+
+</div>
+
+</details>
 
 ---
 

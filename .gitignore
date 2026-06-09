@@ -10,8 +10,9 @@ frontend/.next/
 frontend/out/
 frontend/.env*.local
 
-# OS / editor
+# OS / editor / tooling
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.claude/
