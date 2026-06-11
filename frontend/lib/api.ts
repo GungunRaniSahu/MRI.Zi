@@ -27,20 +27,9 @@ export interface RegistrationResponse {
   images: RegistrationImages;
 }
 
-export interface SamplePair {
-  fixed: string;
-  moving: string;
-}
-
 export async function getHealth(): Promise<{ status: string; engine: string }> {
   const r = await fetch(`${API}/health`, { cache: "no-store" });
   if (!r.ok) throw new Error(`backend not reachable (${r.status})`);
-  return r.json();
-}
-
-export async function getSample(): Promise<SamplePair> {
-  const r = await fetch(`${API}/sample`, { cache: "no-store" });
-  if (!r.ok) throw new Error(`sample failed (${r.status})`);
   return r.json();
 }
 

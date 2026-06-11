@@ -7,14 +7,16 @@ const MODELS = [
     name: "VoxelMorph",
     family: "CNN (U-Net)",
     backend: "TensorFlow",
-    input: "160×160×192",
+    dice: "0.475 → 0.734",
+    auc: "0.637",
     note: "SynthMorph pretrained baseline · Phase 2",
   },
   {
     name: "TransMorph",
     family: "Swin-Transformer + ConvNet",
     backend: "PyTorch",
-    input: "160×192×224",
+    dice: "0.472 → 0.883",
+    auc: "0.835",
     note: "Learn2Reg OASIS winner · Phase 3",
     best: true,
   },
@@ -22,8 +24,9 @@ const MODELS = [
     name: "MLKA-Net",
     family: "Large-kernel attention",
     backend: "PyTorch",
-    input: "native",
-    note: "Attention target model · Phase 4/5",
+    dice: "— not evaluated",
+    auc: "—",
+    note: "No public pretrained weights · future work",
   },
 ];
 
@@ -37,7 +40,8 @@ export default function ResultsShowcase() {
               <th>Model</th>
               <th>Architecture</th>
               <th>Backend</th>
-              <th>Input</th>
+              <th>Mean Dice (before → after)</th>
+              <th>Dementia ROC-AUC</th>
               <th>Role in study</th>
             </tr>
           </thead>
@@ -49,7 +53,10 @@ export default function ResultsShowcase() {
                 </td>
                 <td className="dim">{m.family}</td>
                 <td className="mono">{m.backend}</td>
-                <td className="mono">{m.input}</td>
+                <td className="mono">{m.dice}</td>
+                <td className="mono">
+                  <span className={m.best ? "best" : undefined}>{m.auc}</span>
+                </td>
                 <td className="dim">{m.note}</td>
               </tr>
             ))}
@@ -58,11 +65,49 @@ export default function ResultsShowcase() {
       </div>
 
       <p className="note">
-        All three models are benchmarked on the <b>same Neurite-OASIS</b> data (414
-        brains, 35 anatomical labels) under one metric — <b>Dice</b> on warped
-        segmentation labels. The figures below are real outputs from the research
-        notebooks.
+        Models are evaluated on <b>Neurite-OASIS</b> (414 brains, 35 anatomical
+        labels) using <b>Dice</b> on warped segmentation labels. VoxelMorph (Phase 2)
+        and TransMorph (Phase 3) were each measured on their own native grid
+        (160×160×192 vs 160×192×224), so the raw Dice values are indicative but{" "}
+        <i>not yet a like-for-like comparison</i> — a unified single-grid harness with
+        significance tests (Wilcoxon, DeLong) is Phase 5, in progress. <b>MLKA-Net</b>{" "}
+        has no public pretrained weights and was <i>not evaluated</i>. The TransMorph
+        figures below are real outputs from the Phase 3 notebooks.
       </p>
+
+      <div className="readout" style={{ marginTop: 18 }}>
+        <div className="readout-main">
+          <div className="kicker">Phase 4 · dementia detection · ROC-AUC</div>
+          <div className="dice-flow">
+            <span className="num">0.637</span>
+            <span className="arrow">→</span>
+            <span className="num good">0.835</span>
+          </div>
+          <div className="delta">
+            ▲ TransMorph&rsquo;s hippocampus deformation predicts dementia far better
+            than VoxelMorph&rsquo;s — a ~0.20 AUC gap
+          </div>
+        </div>
+        <div className="readout-stats">
+          <div className="stat">
+            <div className="k">VoxelMorph</div>
+            <div className="v">0.637</div>
+            <div className="u">AUC · CNN</div>
+          </div>
+          <div className="stat">
+            <div className="k">TransMorph</div>
+            <div className="v good">0.835</div>
+            <div className="u">AUC · Transformer</div>
+          </div>
+          <div className="stat">
+            <div className="k">Task</div>
+            <div className="v" style={{ fontSize: 14 }}>
+              CDR
+            </div>
+            <div className="u">healthy vs demented</div>
+          </div>
+        </div>
+      </div>
 
       <div className="block-title">Fig. 1 — Registration outputs (VoxelMorph)</div>
       <div className="viewer-grid three">
