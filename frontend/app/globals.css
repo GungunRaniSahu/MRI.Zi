@@ -357,6 +357,9 @@ a {
   font-weight: 600;
   margin-top: 6px;
 }
+.stat .v.good {
+  color: var(--signal);
+}
 .stat .u {
   font-size: 11px;
   color: var(--ink-3);
@@ -440,7 +443,8 @@ table.research tbody tr:last-child td {
 table.research td.model {
   font-weight: 600;
 }
-table.research td.model .best {
+table.research td.model .best,
+table.research td.mono .best {
   color: var(--signal);
 }
 table.research td.dim {

@@ -171,20 +171,27 @@ MRI.Zi/
 
 ## The research behind it (NIT Trichy)
 
-A reproducible pipeline comparing three model families on the **same Neurite-OASIS** data
-(414 brains, 35 anatomical labels) under one metric — **Dice** on warped segmentation
-labels.
+A reproducible pipeline comparing deep-learning model families on **Neurite-OASIS** data
+(414 brains, 35 anatomical labels) using **Dice** on warped segmentation labels, then
+applying the registration to **dementia detection**.
 
-| Model | Architecture | Backend | Input | Role |
-| --- | --- | --- | --- | --- |
-| **VoxelMorph** | CNN (U-Net) | TensorFlow | 160×160×192 | SynthMorph pretrained baseline |
-| **TransMorph** | Swin-Transformer + ConvNet | PyTorch | 160×192×224 | Learn2Reg OASIS winner |
-| **MLKA-Net** | Large-kernel attention | PyTorch | native | Attention target model |
+| Model | Architecture | Backend | Mean Dice (before → after) | Dementia ROC-AUC | Role |
+| --- | --- | --- | --- | --- | --- |
+| **VoxelMorph** | CNN (U-Net) | TensorFlow | 0.475 → 0.734 | 0.637 | SynthMorph pretrained baseline · Phase 2 |
+| **TransMorph** | Swin-Transformer + ConvNet | PyTorch | 0.472 → **0.883** | **0.835** | Learn2Reg OASIS winner · Phase 3 |
+| **MLKA-Net** | Large-kernel attention | PyTorch | — *not evaluated* | — | No public pretrained weights · future work |
+
+> **Caveat (honest comparison).** VoxelMorph and TransMorph Dice were each measured on
+> their own native grid (160×160×192 vs 160×192×224), so the raw values are indicative but
+> not yet a like-for-like comparison. A unified single-grid harness with significance tests
+> (paired Wilcoxon on Dice, DeLong on AUC) is **Phase 5 — in progress**. MLKA-Net has no
+> public pretrained weights and was not evaluated.
 
 **Application (Phase 4).** Rather than stopping at "which model has the best Dice," the
 study *uses* each model's deformation field — measuring the **Jacobian determinant inside
 the hippocampus** — to **detect dementia** (healthy vs demented from OASIS CDR labels),
-comparing models by ROC-AUC. This is deformation-based morphometry.
+comparing models by ROC-AUC. TransMorph's deformation is far more predictive
+(**AUC 0.835 vs 0.637**). This is deformation-based morphometry.
 
 ---
 
